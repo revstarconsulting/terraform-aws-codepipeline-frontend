@@ -67,12 +67,12 @@ resource "aws_codepipeline" "pipeline" {
       dynamic "action" {
         for_each = "${stage.value.env_name}" != "dev" ? [1] : []
         content {
-          name     = "${stage.value.env_name}-approval"
-          category = "Approval"
-          owner    = "AWS"
-          provider = "Manual"
-          version  = "1"
-
+          name      = "${stage.value.env_name}-approval"
+          category  = "Approval"
+          owner     = "AWS"
+          provider  = "Manual"
+          version   = "1"
+          run_order = "1"
         }
       }
       action {
@@ -83,7 +83,7 @@ resource "aws_codepipeline" "pipeline" {
         provider        = "CodeBuild"
         version         = "1"
         input_artifacts = ["source"]
-        run_order       = lookup(stage.value, "run_order", "1")
+        run_order       = lookup(stage.value, "run_order", "2")
         role_arn        = stage.value.env_name != "dev" ? stage.value["crossaccount_role"] : null
         configuration = {
           ProjectName = stage.value["codebuild_project"]
@@ -96,7 +96,7 @@ resource "aws_codepipeline" "pipeline" {
         provider        = "S3"
         version         = "1"
         input_artifacts = ["build-${stage.value.env_name}"]
-        run_order       = lookup(stage.value, "run_order", "2")
+        run_order       = lookup(stage.value, "run_order", "3")
         role_arn        = stage.value.env_name != "dev" ? stage.value["crossaccount_role"] : null
         configuration = {
           BucketName = lookup(stage.value, "s3_deploy_bucket", var.s3_deploy_bucket)
