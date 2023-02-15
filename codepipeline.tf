@@ -59,15 +59,13 @@ resource "aws_codepipeline" "pipeline" {
 
   # Deploy
   dynamic "stage" {
-    for_each = {
-      for k, v in var.deploy_environments : format("%.4d", k) => v
-    }
+    for_each = { for env in var.deploy_environments : "${env.id}-${env.name}" => env }
     content {
-      name = title("${stage.value.env_name}-deploy")
+      name = title("${stage.value.name}-deploy")
       dynamic "action" {
-        for_each = "${stage.value.env_name}" != "dev" ? [1] : []
+        for_each = "${stage.value.name}" != "dev" ? [1] : []
         content {
-          name      = "${stage.value.env_name}-approval"
+          name      = "${stage.value.name}-approval"
           category  = "Approval"
           owner     = "AWS"
           provider  = "Manual"
@@ -77,27 +75,27 @@ resource "aws_codepipeline" "pipeline" {
       }
       action {
 
-        name            = "cache-invalidation-${stage.value.env_name}"
+        name            = "cache-invalidation-${stage.value.name}"
         category        = "Build"
         owner           = "AWS"
         provider        = "CodeBuild"
         version         = "1"
         input_artifacts = ["source"]
         run_order       = lookup(stage.value, "run_order", "2")
-        role_arn        = stage.value.env_name != "dev" ? stage.value["crossaccount_role"] : null
+        role_arn        = stage.value.name != "dev" ? stage.value["crossaccount_role"] : null
         configuration = {
           ProjectName = stage.value["codebuild_project"]
         }
       }
       action {
-        name            = "deploy-${stage.value.env_name}"
+        name            = "deploy-${stage.value.name}"
         category        = "Deploy"
         owner           = "AWS"
         provider        = "S3"
         version         = "1"
-        input_artifacts = ["build-${stage.value.env_name}"]
+        input_artifacts = ["build-${stage.value.name}"]
         run_order       = lookup(stage.value, "run_order", "3")
-        role_arn        = stage.value.env_name != "dev" ? stage.value["crossaccount_role"] : null
+        role_arn        = stage.value.name != "dev" ? stage.value["crossaccount_role"] : null
         configuration = {
           BucketName = lookup(stage.value, "s3_deploy_bucket", var.s3_deploy_bucket)
           Extract    = "true"
